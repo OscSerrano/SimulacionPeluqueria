@@ -2,24 +2,28 @@
 import pygame
 import sys
 import random
+import csv
 
 #Cosas que es mejor no cambiar
 ALTO = 600
 ANCHO = 800
 ESCALA = 60
 
-#Cosas que se pueden cambiar para cambiar un poco la simulacion
-FPS = 60
-VELOCIDAD = 2
+#Cosas que se pueden cambiar para alterar un poco la simulacion
+FPS = 60 #ticks por segundo
+VELOCIDAD = 5
 SEGUNDOS_ENTRADA_MIN = 1
 SEGUNDOS_ENTRADA_MAX = 3
 SEGUNDOS_ATENDER_MIN = 3
 SEGUNDOS_ATENDER_MAX = 9
 MOSTRAR_CLIENTES_FALTANTES = True
 REPETIR_AUTOMATICAMENTE = False
+PRIMERO_RANDOM_TAMBIEN = False
+GUARDAR_EN_SEGUNDOS = True #False guarda ticks de la simulacion
+DECIMALES = 3 #Solo afecta si se mide en segundos
 #Solo hay que asegurarse de que min es menor o igual a Max, sino ni va a correr.
 
-#Cosas de prueba, muy x
+#Cosas de prueba, pero ps no hay que cambiarlas porque son muy especificas
 BLANCO = (255, 255, 255)
 NEGRO = (0, 0, 0)
 ROJO = (255, 0, 0)
@@ -41,6 +45,10 @@ class Cliente:
         self.fila = 0
         self.lugar = 0
         self.sentado = False
+        self.formado = False
+        #El diccionario para guardar los tiempos de todos
+        self.tiempos = {'Tiempo de llegada': 0, 'Tiempo en formarse': 0, 'Tiempo formado': 0, 'Tiempo siendo atendido': 0, 'Tiempo de salida': 0, 'Tiempo pasado en la tienda': 0}
+
         #cosa extra
         self.checkpoint = False
         self.atendido = False
@@ -94,9 +102,12 @@ class Cliente:
         self.x += self.vel_x
         self.y += self.vel_y
 
-    def detener(self):
+    def detener(self, tiempo):
         self.vel_x = 0
         self.vel_y = 0
+        if not self.formado:
+            self.tiempos['Tiempo en formarse'] = tiempo - self.tiempos['Tiempo de llegada']
+            self.formado = True
 
     def mirar(self, direccion):
         self.sentido = direccion
@@ -160,7 +171,7 @@ class Cliente:
         #Esto no hacia falta pero ps aca lo puse y ya me dio hueva moverle aqui y a llegaCliente()
         return self.fila
         
-    def formarse(self, peluqueras):
+    def formarse(self, peluqueras, tiempo):
         #primera silla 50px, 60px masomenos pa sentarse
         #primera silla 100px, 50px masomenos pa ponerse al lado
         #separacion entre sillas es de 130px aprox
@@ -181,16 +192,20 @@ class Cliente:
                         elif self.y < 60 + self.lugar*70:
                             self.mover(0)
                         else:
-                            self.detener()
+                            if GUARDAR_EN_SEGUNDOS:
+                                tiempo /= FPS
+                                tiempo = round(tiempo,DECIMALES)
+                            self.detener(tiempo)
                             if self.y == 60:
                                 self.mirar(0)
                                 self.sentado = True
+                                self.tiempos['Tiempo formado'] = tiempo - (self.tiempos['Tiempo en formarse']+self.tiempos['Tiempo de llegada'])
                             else:
                                 self.mirar(1)
                     #Por aca abajo decimos que si el cliente ya encontró su fila ya no hace falta checar el resto            
                     break 
 
-    def salir(self):
+    def salir(self, tiempo):
         #Hacemos un movimiento similar al hecho en formarse(), pero ponemos un punto por el que debe pasar
         #para disminuir un poco la superposicion de los clientes a la hora de dirigirse a la salida
         if self.atendido:
@@ -200,7 +215,11 @@ class Cliente:
                 elif self.x > 0:
                     self.mover(3)
                 else:
-                    self.detener()
+                    if GUARDAR_EN_SEGUNDOS:
+                        tiempo /= FPS
+                        tiempo = round(tiempo,DECIMALES)
+                    self.tiempos['Tiempo de salida'] = tiempo
+                    self.tiempos['Tiempo pasado en la tienda'] = tiempo - self.tiempos['Tiempo de llegada']
                     return True
             else:
                 if self.x < 130*self.fila:
@@ -214,7 +233,7 @@ class Cliente:
                     elif self.y < 410:
                         self.mover(0)
                     else:
-                        self.detener()
+                        self.detener(tiempo)
                         self.checkpoint = True
             return False
 
@@ -265,7 +284,7 @@ class Peluquera:
 
         ventana.blit(self.img, self.rect)
 
-    def atender(self, fila, clientes):
+    def atender(self, fila, clientes, tiempoTotal):
         for cliente in clientes:
             #Recorremos la lista de clientes y revisamos si esta formado en la fila de la peluquera que pasamos como fila
             #para entenderlo ir a Tienda.actualiza()
@@ -278,6 +297,10 @@ class Peluquera:
                     else:
                         #Cuando el cliente lleva suficiente tiempo en la silla se atiende
                         cliente.atendido = True
+                        if GUARDAR_EN_SEGUNDOS:
+                            tiempoTotal /= FPS
+                            tiempoTotal = round(tiempoTotal,DECIMALES)
+                        cliente.tiempos['Tiempo siendo atendido'] = tiempoTotal - (cliente.tiempos['Tiempo de llegada']+cliente.tiempos['Tiempo en formarse']+cliente.tiempos['Tiempo formado'])
                         for cliente in clientes:
                             if cliente.fila == fila:
                                 cliente.lugar -= 1
@@ -292,7 +315,6 @@ class Peluquera:
                 #Si ya encontramos al cliente sentado en la silla no yhace falta revisar al resto
                 break
         
-
 class Tienda:
     def __init__(self, ventana):
         #Pasamos la ventana de pygame para poder moverla desde cualquier otra funcion
@@ -301,11 +323,24 @@ class Tienda:
         #Basicamente aca andan las variables de la simulacion
         self.ejecutando = True
         self.totClientes = 0
-        #Se puede hacer que el primer morro llegue en tiempo random tambien asi
-        self.ranTiempo = 0 #random.randint(FPS*SEGUNDOS_ENTRADA_MIN, FPS*SEGUNDOS_ENTRADA_MAX)
+        if PRIMERO_RANDOM_TAMBIEN:
+            self.ranTiempo = random.randint(FPS*SEGUNDOS_ENTRADA_MIN, FPS*SEGUNDOS_ENTRADA_MAX)
+        else:
+            self.ranTiempo = 0 
         self.tiempo = 0
+        self.tiempoTotal = 0
         self.clientes = []
         self.peluqueras = []
+
+        #Para inicializar el .csv con sus headers aka por dios que desesperantes titulos de mierda
+        try:
+            with open('Tiempos_Peluqieria.csv', 'w', newline='') as archivocsv:
+                cliente = Cliente(0,0)
+                escritor = csv.writer(archivocsv)
+                escritor.writerow(cliente.tiempos.keys())
+                del cliente
+        except IOError:
+            print("Parece que no se abrio el .csv y ps ahora no se sobre escribieron los titulos")
 
         #Mas dibujitos
         if MOSTRAR_CLIENTES_FALTANTES:
@@ -330,7 +365,7 @@ class Tienda:
         for i in range (p):
             peluquera = Peluquera(95+(i*130),50)
             self.peluqueras.append(peluquera)
-
+        
     def llegaCliente(self, numClientes):
         #Revisamos si ya llegaron todos los clientes 
         if self.totClientes < numClientes:
@@ -339,6 +374,11 @@ class Tienda:
                 #la puerta anda masomenos por 350px (en y)
                 #al chile si deberia moverla un poco mas arriba, pero ps x
                 cliente = Cliente(0,350)
+                #Metemos el tiempo de llegada
+                if GUARDAR_EN_SEGUNDOS:
+                    cliente.tiempos['Tiempo de llegada'] = round(self.tiempoTotal/FPS,DECIMALES)
+                else:
+                    cliente.tiempos['Tiempo de llegada'] = self.tiempoTotal
                 fila = cliente.elegirFila(self.peluqueras) 
                 self.peluqueras[fila].fila += 1
                 self.clientes.append(cliente) #pum cliente agregado a la lista de clientes
@@ -358,8 +398,12 @@ class Tienda:
             #Al tener activada la repeticion automatica, regresamos a 0 las variables de la simulacion
             self.totClientes = 0
             #Se puede hacer que el primer morro llegue en tiempo random tambien asi
-            self.ranTiempo = 0 #random.randint(FPS*SEGUNDOS_ENTRADA_MIN, FPS*SEGUNDOS_ENTRADA_MAX)
+            if PRIMERO_RANDOM_TAMBIEN:
+                self.ranTiempo = random.randint(FPS*SEGUNDOS_ENTRADA_MIN, FPS*SEGUNDOS_ENTRADA_MAX)
+            else:
+                self.ranTiempo = 0
             self.tiempo = 0
+            self.tiempoTotal = 0
         else:
             #Aca tenemos unos dibujitos para cuando el ultimo cliente sale de la peluqueria y 'termina la simulacion'. 
             #Metí un boton de reset y otra forma de cerrar el programa
@@ -370,15 +414,23 @@ class Tienda:
             elif key[pygame.K_KP_ENTER] or key[pygame.K_SPACE] or key[pygame.K_RETURN]:
                 if self.imgCierre_actual == 0:
                     self.totClientes = 0
-                    self.ranTiempo = 0
+                    if PRIMERO_RANDOM_TAMBIEN:
+                        self.ranTiempo = random.randint(FPS*SEGUNDOS_ENTRADA_MIN, FPS*SEGUNDOS_ENTRADA_MAX)
+                    else:
+                        self.ranTiempo = 0
                     self.tiempo = 0
+                    self.tiempoTotal = 0
                 elif self.imgCierre_actual == 1:
                     self.ejecutando = False
             elif key[pygame.K_r]:
                 #Para los 'Resets' volvemos a inicializar las variables de la simulacion en 0 
                 self.totClientes = 0
-                self.ranTiempo = 0
+                if PRIMERO_RANDOM_TAMBIEN:
+                    self.ranTiempo = random.randint(FPS*SEGUNDOS_ENTRADA_MIN, FPS*SEGUNDOS_ENTRADA_MAX)
+                else:
+                    self.ranTiempo = 0
                 self.tiempo = 0
+                self.tiempoTotal = 0
                 self.imgCierre_actual = 0
             
             self.imgCierres[self.imgCierre_actual] = pygame.transform.scale(self.imgCierres[self.imgCierre_actual], (ANCHO, ALTO))
@@ -395,20 +447,27 @@ class Tienda:
         #Dibujamos a las peluqueras y les apuramos para que atiendan todo lo atendible
         for peluquera in self.peluqueras:
             peluquera.dibujar(self.ventana)
-            peluquera.atender(self.peluqueras.index(peluquera), self.clientes)
+            peluquera.atender(self.peluqueras.index(peluquera), self.clientes, self.tiempoTotal)
         #Cuando el arreglo de clientes este vacio se termina el programa
         if self.clientes or self.totClientes < numClientes:
             #Dibujamos a los clientes y les apuramos a formarse con su peluquera
             for cliente in self.clientes:
                 cliente.dibujar(self.ventana)
-                cliente.formarse(self.peluqueras)
-                if cliente.salir():
-                    #Cuando el cliente llega a la salida, lo borramos de la existencia
+                cliente.formarse(self.peluqueras, self.tiempoTotal)
+                if cliente.salir(self.tiempoTotal):
+                    #Cuando el cliente llega a la salida, lo borramos de la existencia, pero antes guardamos sus datos
+                    try:
+                        with open('Tiempos_Peluqieria.csv', 'a', newline='') as archivocsv:
+                            escritor = csv.DictWriter(archivocsv, fieldnames=cliente.tiempos.keys())
+                            escritor.writerow(cliente.tiempos)
+                    except IOError:
+                        print("La neta, no se pero ps no se abrio el .csv y ps ahora no se guardaron los datos del morro que acaba de salir")
                     self.clientes.remove(cliente)
+            #Vamos contando los ticks de la simulacion
+            self.tiempoTotal += 1
         else:
             self.cierre(key)
             #FIN
-
 
 def main():
     #Inicializacion de la ventana con pygame 
@@ -453,7 +512,6 @@ def main():
 
     #Parar los procesos de pygame
     pygame.quit()
-
 
 
 if __name__ == "__main__":
