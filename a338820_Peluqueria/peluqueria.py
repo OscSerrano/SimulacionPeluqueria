@@ -53,29 +53,41 @@ class Cliente:
         self.checkpoint = False
         self.atendido = False
         #dibujitos
-        self.imgs_baja = [] #Sentido 0 "Sur"
-        self.imgs_baja.append(pygame.image.load("imgs/cliente1baja1.png"))
-        self.imgs_baja.append(pygame.image.load("imgs/cliente1baja.png"))
-        self.imgs_baja.append(pygame.image.load("imgs/cliente1baja2.png"))
-        self.imgs_baja_quieto = pygame.image.load("imgs/cliente1baja.png")
-        self.imgs_sube = [] #Sentido 1 "Norte"
-        self.imgs_sube.append(pygame.image.load("imgs/cliente1sube1.png"))
-        self.imgs_sube.append(pygame.image.load("imgs/cliente1sube.png"))
-        self.imgs_sube.append(pygame.image.load("imgs/cliente1sube2.png"))
-        self.imgs_sube_quieto = pygame.image.load("imgs/cliente1sube.png")
-        self.imgs_der = [] #Sentido 2 "Este"
-        self.imgs_der.append(pygame.image.load("imgs/cliente1der1.png"))
-        self.imgs_der.append(pygame.image.load("imgs/cliente1der.png"))
-        self.imgs_der.append(pygame.image.load("imgs/cliente1der2.png"))
-        self.imgs_der_quieto = pygame.image.load("imgs/cliente1der.png")
-        self.imgs_izq = [] #Sentido 3 "Oeste"
-        self.imgs_izq.append(pygame.image.load("imgs/cliente1izq1.png"))
-        self.imgs_izq.append(pygame.image.load("imgs/cliente1izq.png"))
-        self.imgs_izq.append(pygame.image.load("imgs/cliente1izq2.png"))
-        self.imgs_izq_quieto = pygame.image.load("imgs/cliente1izq.png")
+        self.imgs_baja = [[],[]] #Sentido 0 "Sur" 
+        self.imgs_baja[0].append(pygame.image.load("imgs/cliente1baja1.png"))
+        self.imgs_baja[0].append(pygame.image.load("imgs/cliente1baja.png"))
+        self.imgs_baja[0].append(pygame.image.load("imgs/cliente1baja2.png"))
+        #self.imgs_baja_quieto = pygame.image.load("imgs/cliente1baja.png")
+        self.imgs_baja[1].append(pygame.image.load("imgs/cliente1afro_baja1.png"))
+        self.imgs_baja[1].append(pygame.image.load("imgs/cliente1afro_baja.png"))
+        self.imgs_baja[1].append(pygame.image.load("imgs/cliente1afro_baja2.png"))
+        self.imgs_sube = [[],[]] #Sentido 1 "Norte"
+        self.imgs_sube[0].append(pygame.image.load("imgs/cliente1sube1.png"))
+        self.imgs_sube[0].append(pygame.image.load("imgs/cliente1sube.png"))
+        self.imgs_sube[0].append(pygame.image.load("imgs/cliente1sube2.png"))
+        #self.imgs_sube_quieto = pygame.image.load("imgs/cliente1sube.png")
+        self.imgs_sube[1].append(pygame.image.load("imgs/cliente1afro_sube1.png"))
+        self.imgs_sube[1].append(pygame.image.load("imgs/cliente1afro_sube.png"))
+        self.imgs_sube[1].append(pygame.image.load("imgs/cliente1afro_sube2.png"))
+        self.imgs_der = [[],[]] #Sentido 2 "Este"
+        self.imgs_der[0].append(pygame.image.load("imgs/cliente1der1.png"))
+        self.imgs_der[0].append(pygame.image.load("imgs/cliente1der.png"))
+        self.imgs_der[0].append(pygame.image.load("imgs/cliente1der2.png"))
+        #self.imgs_der_quieto = pygame.image.load("imgs/cliente1der.png")
+        self.imgs_der[1].append(pygame.image.load("imgs/cliente1afro_der1.png"))
+        self.imgs_der[1].append(pygame.image.load("imgs/cliente1afro_der.png"))
+        self.imgs_der[1].append(pygame.image.load("imgs/cliente1afro_der2.png"))
+        self.imgs_izq = [[],[]] #Sentido 3 "Oeste"
+        self.imgs_izq[0].append(pygame.image.load("imgs/cliente1izq1.png"))
+        self.imgs_izq[0].append(pygame.image.load("imgs/cliente1izq.png"))
+        self.imgs_izq[0].append(pygame.image.load("imgs/cliente1izq2.png"))
+        #self.imgs_izq_quieto = pygame.image.load("imgs/cliente1izq.png")
+        self.imgs_izq[1].append(pygame.image.load("imgs/cliente1afro_izq1.png"))
+        self.imgs_izq[1].append(pygame.image.load("imgs/cliente1afro_izq.png"))
+        self.imgs_izq[1].append(pygame.image.load("imgs/cliente1afro_izq2.png"))
 
         self.img_actual = 0
-        self.img = self.imgs_baja_quieto
+        self.img = self.imgs_baja[1][1]
         self.img = pygame.transform.scale(self.img, (ESCALA, ESCALA))
         self.rect = pygame.Rect(self.x, self.y, ESCALA, ESCALA)
 
@@ -117,36 +129,60 @@ class Cliente:
         #Luego dependiendo de la velocidad escogemos una animacion
         if self.sentido == 0: #abajjo
             if self.vel_y == 0:
-                self.img = self.imgs_baja_quieto
+                if self.atendido:
+                    self.img = self.imgs_baja[0][1]
+                else:
+                    self.img = self.imgs_baja[1][1]
             else:
                 self.img_actual += 0.1
                 if self.img_actual >= len(self.imgs_baja):
                     self.img_actual = 0
-                self.img = self.imgs_baja[int(self.img_actual)]
+                if self.atendido:
+                    self.img = self.imgs_baja[0][int(self.img_actual)]
+                else:
+                    self.img = self.imgs_baja[1][int(self.img_actual)]
         elif self.sentido == 1: #arriba
             if self.vel_y == 0:
-                self.img = self.imgs_sube_quieto
+                if self.atendido:
+                    self.img = self.imgs_sube[0][1]
+                else:
+                    self.img = self.imgs_sube[1][1]
             else:
                 self.img_actual += 0.1
                 if self.img_actual >= len(self.imgs_sube):
                     self.img_actual = 0
-                self.img = self.imgs_sube[int(self.img_actual)]
+                if self.atendido:
+                    self.img = self.imgs_sube[0][int(self.img_actual)]
+                else:
+                    self.img = self.imgs_sube[1][int(self.img_actual)]
         elif self.sentido == 2: #derecha
             if self.vel_x == 0:
-                self.img = self.imgs_der_quieto
+                if self.atendido:
+                    self.img = self.imgs_der[0][1]
+                else:
+                    self.img = self.imgs_der[1][1]
             else:
                 self.img_actual += 0.1
                 if self.img_actual >= len(self.imgs_der):
                     self.img_actual = 0
-                self.img = self.imgs_der[int(self.img_actual)]
+                if self.atendido:
+                    self.img = self.imgs_der[0][int(self.img_actual)]
+                else:
+                    self.img = self.imgs_der[1][int(self.img_actual)]
         elif self.sentido == 3: #izquierda
             if self.vel_x == 0:
-                self.img = self.imgs_izq_quieto
+                if self.atendido:
+                    self.img = self.imgs_izq[0][1]
+                else:
+                    self.img = self.imgs_izq[1][1]
             else:
                 self.img_actual += 0.1
                 if self.img_actual >= len(self.imgs_izq):
                     self.img_actual = 0
-                self.img = self.imgs_izq[int(self.img_actual)]
+                if self.atendido:
+                    self.img = self.imgs_izq[0][int(self.img_actual)]
+                else:
+                    self.img = self.imgs_izq[1][int(self.img_actual)]
         
         self.img = pygame.transform.scale(self.img, (ESCALA, ESCALA))
         self.rect = pygame.Rect(self.x, self.y, ESCALA, ESCALA)
