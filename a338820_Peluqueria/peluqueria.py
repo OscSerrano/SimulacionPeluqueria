@@ -22,6 +22,7 @@ PRIMERO_RANDOM_TAMBIEN = False
 GUARDAR_EN_SEGUNDOS = True #False guarda ticks de la simulacion
 DECIMALES = 3 #Solo afecta si se mide en segundos
 #Solo hay que asegurarse de que min es menor o igual a Max, sino ni va a correr.
+TICKSXINPUT = 10
 
 #Cosas de prueba, pero ps no hay que cambiarlas porque son muy especificas
 BLANCO = (255, 255, 255)
@@ -358,6 +359,7 @@ class Tienda:
         self.fuente = pygame.font.Font(None, 25)
         #Basicamente aca andan las variables de la simulacion
         self.ejecutando = True
+        self.pausado = False
         self.totClientes = 0
         if PRIMERO_RANDOM_TAMBIEN:
             self.ranTiempo = random.randint(FPS*SEGUNDOS_ENTRADA_MIN, FPS*SEGUNDOS_ENTRADA_MAX)
@@ -365,6 +367,7 @@ class Tienda:
             self.ranTiempo = 0 
         self.tiempo = 0
         self.tiempoTotal = 0
+        self.ultimoInput = 0
         self.clientes = []
         self.peluqueras = []
 
@@ -379,19 +382,53 @@ class Tienda:
             print("Parece que no se abrio el .csv y ps ahora no se sobre escribieron los titulos")
 
         #Mas dibujitos
+        self.imgFondo = []
         if MOSTRAR_CLIENTES_FALTANTES:
-            self.img = pygame.image.load("imgs/fondo7.jpg")
+            self.imgFondo.append(pygame.image.load("imgs/fondo7.jpg"))
         else:
-            self.img = pygame.image.load("imgs/fondo6.jpg")
-        self.img = pygame.transform.scale(self.img, (ANCHO, ALTO))
+            self.imgFondo.append(pygame.image.load("imgs/fondo6.jpg"))
+
+        self.imgFondo.append(pygame.image.load("imgs/fondoBorroso.jpg"))
         
         self.imgCierres = []
-        self.imgCierres.append(pygame.image.load("imgs/Fin3.png"))
-        self.imgCierres.append(pygame.image.load("imgs/Fin4.png"))
-        self.imgCierres[0] = pygame.transform.scale(self.imgCierres[0], (ANCHO, ALTO))
-        self.imgCierres[1] = pygame.transform.scale(self.imgCierres[1], (ANCHO, ALTO))
+        self.imgCierres.append(pygame.image.load("imgs/Fin5.png"))
+        self.imgCierres.append(pygame.image.load("imgs/Fin6.png"))
+        self.imgCierres.append(pygame.image.load("imgs/Fin7.png"))
 
-        self.imgCierre_actual = 0
+        self.imgInicio = []
+        self.imgInicio.append(pygame.image.load("imgs/Inicio1.png"))
+        self.imgInicio.append(pygame.image.load("imgs/Inicio2.png"))
+        self.imgInicio.append(pygame.image.load("imgs/Inicio3.png"))
+
+        self.imgPausa = []
+        self.imgPausa.append(pygame.image.load("imgs/Pausa1.png"))
+        self.imgPausa.append(pygame.image.load("imgs/Pausa2.png"))
+        self.imgPausa.append(pygame.image.load("imgs/Pausa3.png"))
+        self.imgPausa.append(pygame.image.load("imgs/Pausa4.png"))
+
+        self.imgConfig = [[],[],[],[],[],[],[]]
+        self.imgConfig[0].append(pygame.image.load("imgs/Config1.png"))
+        self.imgConfig[0].append(pygame.image.load("imgs/Config1.1.png"))
+        self.imgConfig[1].append(pygame.image.load("imgs/Config2.png"))
+        self.imgConfig[1].append(pygame.image.load("imgs/Config2.1.png"))
+        self.imgConfig[2].append(pygame.image.load("imgs/Config3.png"))
+        self.imgConfig[2].append(pygame.image.load("imgs/Config3.1.png"))
+        self.imgConfig[3].append(pygame.image.load("imgs/Config4.png"))
+        self.imgConfig[3].append(pygame.image.load("imgs/Config4.1.png"))
+        self.imgConfig[3].append(pygame.image.load("imgs/Config4.2.png"))
+        self.imgConfig[4].append(pygame.image.load("imgs/Config5.png"))
+        self.imgConfig[4].append(pygame.image.load("imgs/Config5.1.png"))
+        self.imgConfig[4].append(pygame.image.load("imgs/Config5.2.png"))
+        self.imgConfig[5].append(pygame.image.load("imgs/Config6.png"))
+        self.imgConfig[5].append(pygame.image.load("imgs/Config6.1.png"))
+        self.imgConfig[6].append(pygame.image.load("imgs/Config7.png"))
+
+        
+        self.imgMenu_Actual = 0
+        self.imgMenu = self.imgInicio[0]
+        self.imgMenu = pygame.transform.scale(self.imgMenu, (ANCHO, ALTO))
+        self.img = self.imgFondo[0]
+        self.img = pygame.transform.scale(self.img, (ANCHO, ALTO))
         self.rect = pygame.Rect(0, 0, ANCHO, ALTO)
 
     def peluqueros(self, p):
@@ -428,7 +465,7 @@ class Tienda:
             texto = self.fuente.render("x"+str(numClientes-self.totClientes), 0, VERDE)
             texto_rect = texto.get_rect(center=(27, 586))
             self.ventana.blit(texto, texto_rect)
-        
+
     def cierre(self, key):
         if REPETIR_AUTOMATICAMENTE:
             #Al tener activada la repeticion automatica, regresamos a 0 las variables de la simulacion
@@ -443,12 +480,31 @@ class Tienda:
         else:
             #Aca tenemos unos dibujitos para cuando el ultimo cliente sale de la peluqueria y 'termina la simulacion'. 
             #Metí un boton de reset y otra forma de cerrar el programa
-            if key[pygame.K_UP]:
-                self.imgCierre_actual = 0
-            elif key[pygame.K_DOWN]:
-                self.imgCierre_actual = 1
-            elif key[pygame.K_KP_ENTER] or key[pygame.K_SPACE] or key[pygame.K_RETURN]:
-                if self.imgCierre_actual == 0:
+            if self.ultimoInput > TICKSXINPUT:
+                self.ultimoInput = 0
+                if key[pygame.K_UP]:
+                    if self.imgMenu_Actual > 0:
+                        self.imgMenu_Actual -= 1
+                    else:
+                        self.imgMenu_Actual = 2
+                elif key[pygame.K_DOWN]:
+                    if self.imgMenu_Actual < 2:
+                        self.imgMenu_Actual += 1
+                    else:
+                        self.imgMenu_Actual = 0
+                elif key[pygame.K_KP_ENTER] or key[pygame.K_SPACE] or key[pygame.K_RETURN]:
+                    if self.imgMenu_Actual == 0:
+                        self.totClientes = 0
+                        if PRIMERO_RANDOM_TAMBIEN:
+                            self.ranTiempo = random.randint(FPS*SEGUNDOS_ENTRADA_MIN, FPS*SEGUNDOS_ENTRADA_MAX)
+                        else:
+                            self.ranTiempo = 0
+                        self.tiempo = 0
+                        self.tiempoTotal = 0
+                    elif self.imgMenu_Actual == 1:
+                        self.ejecutando = False
+                elif key[pygame.K_r]:
+                    #Para los 'Resets' volvemos a inicializar las variables de la simulacion en 0 
                     self.totClientes = 0
                     if PRIMERO_RANDOM_TAMBIEN:
                         self.ranTiempo = random.randint(FPS*SEGUNDOS_ENTRADA_MIN, FPS*SEGUNDOS_ENTRADA_MAX)
@@ -456,10 +512,64 @@ class Tienda:
                         self.ranTiempo = 0
                     self.tiempo = 0
                     self.tiempoTotal = 0
-                elif self.imgCierre_actual == 1:
+                    self.imgMenu_Actual = 0
+            else:
+                self.ultimoInput += 1
+            
+            self.imgMenu = self.imgCierres[self.imgMenu_Actual]
+            self.imgMenu = pygame.transform.scale(self.imgMenu, (ANCHO, ALTO))
+            self.rect = pygame.Rect(0, 0, ANCHO, ALTO)
+            self.ventana.blit(self.imgMenu, self.rect)
+
+    def pausa(self, key):
+        if self.ultimoInput > TICKSXINPUT:
+            if key[pygame.K_UP]:
+                self.ultimoInput = 0
+                if self.imgMenu_Actual > 0:
+                    self.imgMenu_Actual -= 1
+                else:
+                    self.imgMenu_Actual = 3
+            elif key[pygame.K_DOWN]:
+                self.ultimoInput = 0
+                if self.imgMenu_Actual < 3:
+                    self.imgMenu_Actual += 1
+                else:
+                    self.imgMenu_Actual = 0
+            elif key[pygame.K_KP_ENTER] or key[pygame.K_SPACE] or key[pygame.K_RETURN]:
+                self.ultimoInput = 0
+                if self.imgMenu_Actual == 0:
+                    #Salir del modo pausa
+                    self.img = self.imgFondo[0]
+                    self.pausado = False
+                    self.imgMenu_Actual = 0
+                elif self.imgMenu_Actual == 1:
+                    self.clientes.clear()
+                    self.peluqueras.clear()
+                    self.totClientes = 0
+                    if PRIMERO_RANDOM_TAMBIEN:
+                        self.ranTiempo = random.randint(FPS*SEGUNDOS_ENTRADA_MIN, FPS*SEGUNDOS_ENTRADA_MAX)
+                    else:
+                        self.ranTiempo = 0
+                    self.tiempo = 0
+                    self.tiempoTotal = 0
+                    self.img = self.imgFondo[0]
+                    self.pausado = False
+                    self.imgMenu_Actual = 0
+                elif self.imgMenu_Actual == 2:
+                    print("hola")
+                elif self.imgMenu_Actual == 3:
                     self.ejecutando = False
+            elif key[pygame.K_p]:
+                #Salir del modo pausa
+                self.ultimoInput = 0
+                self.img = self.imgFondo[0]
+                self.pausado = False
+                self.imgMenu_Actual = 0
             elif key[pygame.K_r]:
                 #Para los 'Resets' volvemos a inicializar las variables de la simulacion en 0 
+                self.clientes.clear()
+                self.peluqueras.clear()
+                self.ultimoInput = 0
                 self.totClientes = 0
                 if PRIMERO_RANDOM_TAMBIEN:
                     self.ranTiempo = random.randint(FPS*SEGUNDOS_ENTRADA_MIN, FPS*SEGUNDOS_ENTRADA_MAX)
@@ -467,43 +577,68 @@ class Tienda:
                     self.ranTiempo = 0
                 self.tiempo = 0
                 self.tiempoTotal = 0
-                self.imgCierre_actual = 0
-            
-            self.imgCierres[self.imgCierre_actual] = pygame.transform.scale(self.imgCierres[self.imgCierre_actual], (ANCHO, ALTO))
-            self.rect = pygame.Rect(0, 0, ANCHO, ALTO)
-            self.ventana.blit(self.imgCierres[self.imgCierre_actual], self.rect)
+                self.imgMenu_Actual = 0
+                self.img = self.imgFondo[0]
+                self.pausado = False
+                self.imgMenu_Actual = 0
+            elif key[pygame.K_c]:
+                pass
 
-    def actualiza(self, key, numClientes):
+                
+
+        else:
+            self.ultimoInput += 1
+
+        self.imgMenu = self.imgPausa[self.imgMenu_Actual]
+        self.imgMenu = pygame.transform.scale(self.imgMenu, (ANCHO, ALTO))
+        self.rect = pygame.Rect(0, 0, ANCHO, ALTO)
+        self.ventana.blit(self.imgMenu, self.rect)
+
+    def actualiza(self, key, numPeluqueros, numClientes):
         #Reset del fondo de pantalla (el mapa)
         self.ventana.blit(self.img, self.rect)
-
-        #Llegada medio random de clientes
-        self.llegaCliente(numClientes)
-        
-        #Dibujamos a las peluqueras y les apuramos para que atiendan todo lo atendible
-        for peluquera in self.peluqueras:
-            peluquera.dibujar(self.ventana)
-            peluquera.atender(self.peluqueras.index(peluquera), self.clientes, self.tiempoTotal)
-        #Cuando el arreglo de clientes este vacio se termina el programa
-        if self.clientes or self.totClientes < numClientes:
-            #Dibujamos a los clientes y les apuramos a formarse con su peluquera
-            for cliente in self.clientes:
-                cliente.dibujar(self.ventana)
-                cliente.formarse(self.peluqueras, self.tiempoTotal)
-                if cliente.salir(self.tiempoTotal):
-                    #Cuando el cliente llega a la salida, lo borramos de la existencia, pero antes guardamos sus datos
-                    try:
-                        with open('Tiempos_Peluqieria.csv', 'a', newline='') as archivocsv:
-                            escritor = csv.DictWriter(archivocsv, fieldnames=cliente.tiempos.keys())
-                            escritor.writerow(cliente.tiempos)
-                    except IOError:
-                        print("La neta, no se pero ps no se abrio el .csv y ps ahora no se guardaron los datos del morro que acaba de salir")
-                    self.clientes.remove(cliente)
-            #Vamos contando los ticks de la simulacion
-            self.tiempoTotal += 1
+        if len(self.peluqueras) < numPeluqueros:
+            self.peluqueras.clear()
+            self.peluqueros(numPeluqueros)
+        if self.pausado:
+            self.pausa(key)
         else:
-            self.cierre(key)
-            #FIN
+            if self.ultimoInput > TICKSXINPUT:
+                #Le picas a la p para pausar, que original por dios
+                if key[pygame.K_p]:
+                    self.img = self.imgFondo[1]
+                    self.pausado = True
+                    self.ultimoInput = 0
+            else:
+                self.ultimoInput += 1
+
+            #Llegada medio random de clientes
+            self.llegaCliente(numClientes)
+            
+            #Dibujamos a las peluqueras y les apuramos para que atiendan todo lo atendible
+            for peluquera in self.peluqueras:
+                peluquera.dibujar(self.ventana)
+                peluquera.atender(self.peluqueras.index(peluquera), self.clientes, self.tiempoTotal)
+            #Cuando el arreglo de clientes este vacio se termina el programa
+            if self.clientes or self.totClientes < numClientes:
+                #Dibujamos a los clientes y les apuramos a formarse con su peluquera
+                for cliente in self.clientes:
+                    cliente.dibujar(self.ventana)
+                    cliente.formarse(self.peluqueras, self.tiempoTotal)
+                    if cliente.salir(self.tiempoTotal):
+                        #Cuando el cliente llega a la salida, lo borramos de la existencia, pero antes guardamos sus datos
+                        try:
+                            with open('Tiempos_Peluqieria.csv', 'a', newline='') as archivocsv:
+                                escritor = csv.DictWriter(archivocsv, fieldnames=cliente.tiempos.keys())
+                                escritor.writerow(cliente.tiempos)
+                        except IOError:
+                            print("La neta, no se pero ps no se abrio el .csv y ps ahora no se guardaron los datos del morro que acaba de salir")
+                        self.clientes.remove(cliente)
+                #Vamos contando los ticks de la simulacion
+                self.tiempoTotal += 1
+            else:
+                self.cierre(key)
+                #FIN
 
 def main():
     #Inicializacion de la ventana con pygame 
@@ -523,7 +658,6 @@ def main():
     if 0 < numPeluqueros <= 6 and 0 < numClientes <= 30:
         #Instanciamos el loocal, ponemos los peluqueros de una e inicializamos key pa evitar errores 
         tienda = Tienda(ventana)
-        tienda.peluqueros(numPeluqueros)
         key = pygame.key.get_pressed()
 
         while tienda.ejecutando:
@@ -539,7 +673,7 @@ def main():
                     tienda.ejecutando = False
 
             #Actualizar estado de la tienda
-            tienda.actualiza(key, numClientes)
+            tienda.actualiza(key, numPeluqueros, numClientes)
 
             #Se dibujan las cosas
             pygame.display.flip()
