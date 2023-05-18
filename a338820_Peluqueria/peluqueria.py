@@ -22,7 +22,7 @@ PRIMERO_RANDOM_TAMBIEN = False
 GUARDAR_EN_SEGUNDOS = True #False guarda ticks de la simulacion
 DECIMALES = 3 #Solo afecta si se mide en segundos
 #Solo hay que asegurarse de que min es menor o igual a Max, sino ni va a correr.
-TICKSXINPUT = 10
+TICKSXINPUT = 8
 
 #Cosas de prueba, pero ps no hay que cambiarlas porque son muy especificas
 BLANCO = (255, 255, 255)
@@ -360,6 +360,7 @@ class Tienda:
         #Basicamente aca andan las variables de la simulacion
         self.ejecutando = True
         self.pausado = False
+        self.configurando = False
         self.totClientes = 0
         if PRIMERO_RANDOM_TAMBIEN:
             self.ranTiempo = random.randint(FPS*SEGUNDOS_ENTRADA_MIN, FPS*SEGUNDOS_ENTRADA_MAX)
@@ -425,6 +426,7 @@ class Tienda:
 
         
         self.imgMenu_Actual = 0
+        self.imgMenu_Actual2 = 0
         self.imgMenu = self.imgInicio[0]
         self.imgMenu = pygame.transform.scale(self.imgMenu, (ANCHO, ALTO))
         self.img = self.imgFondo[0]
@@ -461,7 +463,7 @@ class Tienda:
             else:
                 #aca anda la cuenta de tiempo
                 self.tiempo += 1
-        if MOSTRAR_CLIENTES_FALTANTES:
+        if MOSTRAR_CLIENTES_FALTANTES and (self.clientes or self.totClientes < numClientes):
             texto = self.fuente.render("x"+str(numClientes-self.totClientes), 0, VERDE)
             texto_rect = texto.get_rect(center=(27, 586))
             self.ventana.blit(texto, texto_rect)
@@ -469,6 +471,7 @@ class Tienda:
     def cierre(self, key):
         if REPETIR_AUTOMATICAMENTE:
             #Al tener activada la repeticion automatica, regresamos a 0 las variables de la simulacion
+            self.img = self.imgFondo[0]
             self.totClientes = 0
             #Se puede hacer que el primer morro llegue en tiempo random tambien asi
             if PRIMERO_RANDOM_TAMBIEN:
@@ -483,17 +486,21 @@ class Tienda:
             if self.ultimoInput > TICKSXINPUT:
                 self.ultimoInput = 0
                 if key[pygame.K_UP]:
+                    self.ultimoInput = 0
                     if self.imgMenu_Actual > 0:
                         self.imgMenu_Actual -= 1
                     else:
                         self.imgMenu_Actual = 2
                 elif key[pygame.K_DOWN]:
+                    self.ultimoInput = 0
                     if self.imgMenu_Actual < 2:
                         self.imgMenu_Actual += 1
                     else:
                         self.imgMenu_Actual = 0
                 elif key[pygame.K_KP_ENTER] or key[pygame.K_SPACE] or key[pygame.K_RETURN]:
+                    self.ultimoInput = 0
                     if self.imgMenu_Actual == 0:
+                        self.img = self.imgFondo[0]
                         self.totClientes = 0
                         if PRIMERO_RANDOM_TAMBIEN:
                             self.ranTiempo = random.randint(FPS*SEGUNDOS_ENTRADA_MIN, FPS*SEGUNDOS_ENTRADA_MAX)
@@ -502,9 +509,15 @@ class Tienda:
                         self.tiempo = 0
                         self.tiempoTotal = 0
                     elif self.imgMenu_Actual == 1:
+                        self.configurando = True
+                        self.imgMenu_Actual = 0
+                        self.imgMenu_Actual2 = 0
+                    elif self.imgMenu_Actual == 2:
                         self.ejecutando = False
                 elif key[pygame.K_r]:
                     #Para los 'Resets' volvemos a inicializar las variables de la simulacion en 0 
+                    self.img = self.imgFondo[0]
+                    self.ultimoInput = 0
                     self.totClientes = 0
                     if PRIMERO_RANDOM_TAMBIEN:
                         self.ranTiempo = random.randint(FPS*SEGUNDOS_ENTRADA_MIN, FPS*SEGUNDOS_ENTRADA_MAX)
@@ -513,6 +526,11 @@ class Tienda:
                     self.tiempo = 0
                     self.tiempoTotal = 0
                     self.imgMenu_Actual = 0
+                elif key[pygame.K_c]:
+                    self.ultimoInput = 0
+                    self.configurando = True
+                    self.imgMenu_Actual = 0
+                    self.imgMenu_Actual2 = 0
             else:
                 self.ultimoInput += 1
             
@@ -541,7 +559,6 @@ class Tienda:
                     #Salir del modo pausa
                     self.img = self.imgFondo[0]
                     self.pausado = False
-                    self.imgMenu_Actual = 0
                 elif self.imgMenu_Actual == 1:
                     self.clientes.clear()
                     self.peluqueras.clear()
@@ -554,11 +571,14 @@ class Tienda:
                     self.tiempoTotal = 0
                     self.img = self.imgFondo[0]
                     self.pausado = False
-                    self.imgMenu_Actual = 0
                 elif self.imgMenu_Actual == 2:
-                    print("hola")
+                    self.configurando = True
+                    self.imgMenu_Actual = 0
+                    self.imgMenu_Actual2 = 0
                 elif self.imgMenu_Actual == 3:
                     self.ejecutando = False
+                self.imgMenu_Actual = 0
+                self.imgMenu_Actual2 = 0
             elif key[pygame.K_p]:
                 #Salir del modo pausa
                 self.ultimoInput = 0
@@ -582,14 +602,53 @@ class Tienda:
                 self.pausado = False
                 self.imgMenu_Actual = 0
             elif key[pygame.K_c]:
-                pass
-
-                
+                self.ultimoInput = 0
+                self.configurando = True
+                self.imgMenu_Actual = 0
+                self.imgMenu_Actual2 = 0
 
         else:
             self.ultimoInput += 1
 
         self.imgMenu = self.imgPausa[self.imgMenu_Actual]
+        self.imgMenu = pygame.transform.scale(self.imgMenu, (ANCHO, ALTO))
+        self.rect = pygame.Rect(0, 0, ANCHO, ALTO)
+        self.ventana.blit(self.imgMenu, self.rect)
+
+    def configurar(self, key):
+        if self.ultimoInput > TICKSXINPUT:
+            if self.imgMenu_Actual2 == 0:
+                if key[pygame.K_UP]:
+                    self.ultimoInput = 0
+                    if self.imgMenu_Actual > 0:
+                        self.imgMenu_Actual -= 1
+                    else:
+                        self.imgMenu_Actual = 6
+                elif key[pygame.K_DOWN]:
+                    self.ultimoInput = 0
+                    if self.imgMenu_Actual < 6:
+                        self.imgMenu_Actual += 1
+                    else:
+                        self.imgMenu_Actual = 0
+            if key[pygame.K_KP_ENTER] or key[pygame.K_SPACE] or key[pygame.K_RETURN]:
+                self.ultimoInput = 0
+                if self.imgMenu_Actual == 6:
+                    self.ultimoInput = 0
+                    self.configurando = False
+                    self.imgMenu_Actual = 0
+                    self.imgMenu_Actual2 = 0
+                else:
+                    print("pa despues")
+            elif key[pygame.K_c]:
+                self.ultimoInput = 0
+                self.configurando = False
+                self.imgMenu_Actual = 0
+                self.imgMenu_Actual2 = 0
+
+        else:
+            self.ultimoInput += 1
+
+        self.imgMenu = self.imgConfig[self.imgMenu_Actual][self.imgMenu_Actual2]
         self.imgMenu = pygame.transform.scale(self.imgMenu, (ANCHO, ALTO))
         self.rect = pygame.Rect(0, 0, ANCHO, ALTO)
         self.ventana.blit(self.imgMenu, self.rect)
@@ -600,8 +659,10 @@ class Tienda:
         if len(self.peluqueras) < numPeluqueros:
             self.peluqueras.clear()
             self.peluqueros(numPeluqueros)
-        if self.pausado:
+        if self.pausado and not self.configurando:
             self.pausa(key)
+        elif self.configurando:
+            self.configurar(key)
         else:
             if self.ultimoInput > TICKSXINPUT:
                 #Le picas a la p para pausar, que original por dios
@@ -615,12 +676,12 @@ class Tienda:
             #Llegada medio random de clientes
             self.llegaCliente(numClientes)
             
-            #Dibujamos a las peluqueras y les apuramos para que atiendan todo lo atendible
-            for peluquera in self.peluqueras:
-                peluquera.dibujar(self.ventana)
-                peluquera.atender(self.peluqueras.index(peluquera), self.clientes, self.tiempoTotal)
             #Cuando el arreglo de clientes este vacio se termina el programa
             if self.clientes or self.totClientes < numClientes:
+                #Dibujamos a las peluqueras y les apuramos para que atiendan todo lo atendible
+                for peluquera in self.peluqueras:
+                    peluquera.dibujar(self.ventana)
+                    peluquera.atender(self.peluqueras.index(peluquera), self.clientes, self.tiempoTotal)
                 #Dibujamos a los clientes y les apuramos a formarse con su peluquera
                 for cliente in self.clientes:
                     cliente.dibujar(self.ventana)
@@ -637,6 +698,7 @@ class Tienda:
                 #Vamos contando los ticks de la simulacion
                 self.tiempoTotal += 1
             else:
+                self.img = self.imgFondo[1]
                 self.cierre(key)
                 #FIN
 
